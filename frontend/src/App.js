@@ -47,7 +47,7 @@ const centralAuth = {
       layersCount: 8,
       role: "admin",
       joinedApps: ["spotstitch", "coquest"],
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=admin",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin+User",
     },
     {
       id: 2,
@@ -58,7 +58,7 @@ const centralAuth = {
       layersCount: 12,
       role: "user",
       joinedApps: ["spotstitch"],
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=john",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John+Doe",
     },
     {
       id: 3,
@@ -69,12 +69,13 @@ const centralAuth = {
       layersCount: 6,
       role: "moderator",
       joinedApps: ["coquest"],
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah+Cooper",
     },
   ],
 
   async authenticate(email) {
     // Simulate central auth lookup
+    console.log(`Authenticating user: ${email}`);
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     let user = this.users.find((u) => u.email === email);
@@ -302,7 +303,9 @@ const mockAPI = {
         if (layer.visibility === "private") {
           // Private layers only visible to creator and members
           return (
-            user && (layer.createdBy === user.email || user.role === "admin")
+            user &&
+            layer.visibleIn.some((app) => user.joinedApps.includes(app)) &&
+            (layer.createdBy === user.email || user.role === "admin")
           );
         } else if (layer.visibility === "shared") {
           // Shared layers visible to users of both apps if they have access
@@ -1144,9 +1147,11 @@ const LoginScreen = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     setStep("sso");
+    console.log(email);
 
     try {
       // Simulate central auth system lookup
+
       const user = await centralAuth.authenticate(email);
       onLogin(user);
     } catch (error) {
@@ -1157,10 +1162,17 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  const quickLogin = (userEmail) => {
-    setEmail(userEmail);
-    const fakeEvent = { preventDefault: () => {} };
-    handleSubmit(fakeEvent);
+  const quickLogin = async (email) => {
+    try {
+      setLoading(true);
+      const user = await centralAuth.authenticate(email); // ✅ pass directly
+      onLogin(user);
+    } catch (err) {
+      console.error("Quick login failed:", err);
+      setStep("login");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
